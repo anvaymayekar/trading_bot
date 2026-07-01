@@ -64,9 +64,6 @@ class OrderRequest(BaseModel):
 
 
 class OrderResponse(BaseModel):
-    """Normalized representation of what came back from Binance,
-    regardless of order type."""
-
     order_id: int
     symbol: str
     side: Side
@@ -75,3 +72,35 @@ class OrderResponse(BaseModel):
     executed_qty: Decimal
     avg_price: Decimal | None = None
     raw_response: dict[str, Any] = Field(default_factory=dict, repr=False)
+
+    @classmethod
+    def from_binance_response(
+        cls, data: dict[str, Any], order_type: OrderType
+    ) -> "OrderResponse":
+        avg_price_raw = data.get("avgPrice")
+        avg_price = (
+            Decimal(avg_price_raw)
+            if avg_price_raw not in (None, "", "0.00", "0")
+            else None
+        )
+        return cls(
+            order_id=data["orderId"],
+            symbol=data["symbol"],
+            side=Side(data["side"]),
+            order_type=order_type,
+            status=OrderStatus(data["status"]),
+            executed_qty=Decimal(data.get("executedQty", "0")),
+            avg_price=avg_price,
+            raw_response=data,
+        )
+
+
+class TwapExecutionSummary(BaseModel):
+    """Aggregated result of a TWAP execution across all its slices."""
+
+    symbol: str
+    side: Side
+    total_quantity: Decimal
+    total_executed_qty: Decimal
+    avg_price: Decimal | None
+    slice_orders: list[OrderResponse]
