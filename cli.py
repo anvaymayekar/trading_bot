@@ -74,7 +74,13 @@ def _run_order(
         raise typer.Exit(code=1)
 
     _print_request_summary(request)
-    logger.info("Submitting order: %s", request.model_dump())
+    logger.info(
+        "Placing %s %s order: symbol=%s quantity=%s",
+        request.order_type.value,
+        request.side.value,
+        request.symbol,
+        request.quantity,
+    )
 
     try:
         with BinanceFuturesClient() as client:
@@ -85,7 +91,20 @@ def _run_order(
         logger.error("Order failed: %s", exc)
         raise typer.Exit(code=1)
 
-    logger.info("Order result: %s", result)
+    if isinstance(result, TwapExecutionSummary):
+        logger.info(
+            "TWAP accepted: total_executed_qty=%s avg_price=%s slices=%s",
+            result.total_executed_qty,
+            result.avg_price,
+            len(result.slice_orders),
+        )
+    else:
+        logger.info(
+            "Order accepted: id=%s executed_qty=%s avg_price=%s",
+            result.order_id,
+            result.executed_qty,
+            result.avg_price,
+        )
     _print_result(result)
     console.print("[green]Success[/green]")
 
@@ -101,7 +120,7 @@ def _print_request_summary(request: OrderRequest) -> None:
     table = Table(title="Order Request")
     table.add_column("Field")
     table.add_column("Value")
-    for field, value in request.model_dump(exclude_none=True).items():
+    for field, value in request.model_dump(exclude_none=True, mode="json").items():
         table.add_row(field, str(value))
     console.print(table)
 
@@ -114,11 +133,11 @@ def _print_result(result: object) -> None:
         )
         for i, order in enumerate(result.slice_orders, start=1):
             console.print(
-                f"  slice {i}: orderId={order.order_id} status={order.status}"
+                f"  slice {i}: orderId={order.order_id} status={order.status.value}"
             )
     else:
         console.print(
-            f"orderId={result.order_id} status={result.status} "
+            f"orderId={result.order_id} status={result.status.value} "
             f"executedQty={result.executed_qty} avgPrice={result.avg_price}"
         )
 

@@ -7,7 +7,7 @@ from pathlib import Path
 LOG_DIR = Path("logs")
 LOG_FILE = LOG_DIR / "trades.log"
 
-_FORMAT = "%(asctime)s | %(levelname)s | %(name)s | %(message)s"
+_FORMAT = "%(asctime)s | %(levelname)s | %(message)s"
 
 
 def setup_logging() -> logging.Logger:
