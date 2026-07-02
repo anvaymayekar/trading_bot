@@ -48,6 +48,9 @@ trading_bot/
 │   └── config.py             # Typed .env loading via pydantic-settings
 ├── cli.py                    # Typer entry point
 ├── tests/                     # Mocked HTTP/client — no live calls needed
+│   ├── test_client.py         # Signing + error-translation tests (mocked HTTP)
+│   ├── test_orders.py         # Strategy execution tests (mocked client)
+│   └── test_validators.py     # OrderRequest validation rule tests
 ├── logs_sample/               # Committed evidence: real MARKET/LIMIT/TWAP runs
 ├── .env
 ├── .env.example
