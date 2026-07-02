@@ -49,6 +49,7 @@ trading_bot/
 ├── cli.py                    # Typer entry point
 ├── tests/                     # Mocked HTTP/client — no live calls needed
 ├── logs_sample/               # Committed evidence: real MARKET/LIMIT/TWAP runs
+├── .env
 ├── .env.example
 └── pyproject.toml
 ```
