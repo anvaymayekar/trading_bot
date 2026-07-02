@@ -2,6 +2,7 @@ from unittest.mock import MagicMock
 
 from bot.models import OrderRequest, OrderType, Side
 from bot.orders import LimitOrder, MarketOrder, TwapOrder
+from decimal import Decimal
 
 
 def _binance_response(order_id=1, executed_qty="0.001", avg_price="50000"):
@@ -52,8 +53,8 @@ def test_twap_order_execute_places_correct_slice_count():
         order_type=OrderType.TWAP,
         quantity="0.003",
         twap_slices=3,
-        twap_interval_seconds=0,
+        twap_interval_seconds=1,
     )
     result = TwapOrder(request, client).execute()
     assert client.place_order.call_count == 3
-    assert result.total_executed_qty == 0.003
+    assert result.total_executed_qty == Decimal("0.003")
