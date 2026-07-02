@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import logging
 import time
 from functools import wraps
 from typing import Any, Callable
@@ -18,6 +19,8 @@ from bot.exceptions import (
     NetworkError,
     OrderRejectedError,
 )
+
+logger = logging.getLogger("trading_bot")
 
 BINANCE_ERROR_MAP: dict[int, type[APIError]] = {
     -2015: AuthenticationError,
@@ -36,6 +39,12 @@ def with_retry(max_attempts: int = 3, backoff_seconds: float = 1.0) -> Callable:
                     return func(*args, **kwargs)
                 except NetworkError as exc:
                     last_exc = exc
+                    logger.debug(
+                        "Retry %s/%s after network error: %s",
+                        attempt,
+                        max_attempts,
+                        exc,
+                    )
                     if attempt < max_attempts:
                         time.sleep(backoff_seconds * attempt)
             raise last_exc  # type: ignore[misc]
@@ -80,13 +89,21 @@ class BinanceFuturesClient:
     @with_retry(max_attempts=3)
     def _signed_post(self, path: str, params: dict[str, Any]) -> dict[str, Any]:
         signed_params = self._sign(params)
+        logger.debug(
+            "Request: POST %s params=%s",
+            path,
+            {k: v for k, v in signed_params.items() if k != "signature"},
+        )
         try:
             response = self._client.post(path, params=signed_params)
         except httpx.TimeoutException as exc:
+            logger.error("Request to %s timed out: %s", path, exc)
             raise NetworkError(f"Request to {path} timed out") from exc
         except httpx.ConnectError as exc:
+            logger.error("Could not connect to Binance testnet: %s", exc)
             raise NetworkError(f"Could not connect to Binance testnet: {exc}") from exc
         except httpx.HTTPError as exc:
+            logger.error("Network error calling %s: %s", path, exc)
             raise NetworkError(f"Network error calling {path}: {exc}") from exc
 
         return self._handle_response(response)
@@ -97,9 +114,12 @@ class BinanceFuturesClient:
         except ValueError:
             body = {}
 
+        logger.debug("Response: status=%s body=%s", response.status_code, body)
+
         if response.status_code >= 400:
             code = body.get("code")
             msg = body.get("msg", f"HTTP {response.status_code} error")
+            logger.error("API error: code=%s msg=%s", code, msg)
             exc_cls = BINANCE_ERROR_MAP.get(code, OrderRejectedError)
             raise exc_cls(msg, binance_code=code, raw_response=body)
 
